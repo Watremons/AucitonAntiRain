@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+    <Authors>Yukari316</Authors>
+    <Copyright>Yukari316</Copyright>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <Version>0.4.1</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile></DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <DocumentationFile />
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DocumentationFile />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Resource\CommandHelp\**" />
+    <EmbeddedResource Remove="Resource\CommandHelp\**" />
+    <None Remove="Resource\CommandHelp\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="IO\Config\Res\InitGlobalConfig.yaml" />
+    <None Remove="IO\Config\Res\InitUserConfig.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="IO\Config\Res\InitGlobalConfig.yaml" />
+    <EmbeddedResource Include="IO\Config\Res\InitUserConfig.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BilibiliApi" Version="0.2.2" />
+    <PackageReference Include="SharpYaml" Version="1.6.6" />
+    <PackageReference Include="Sora" Version="0.2.1" />
+    <PackageReference Include="sqlSugarCore" Version="5.0.0.19" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="4.7.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="IO\Config\Res\InitRes.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>InitRes.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="IO\Config\Res\InitRes.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>InitRes.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>
