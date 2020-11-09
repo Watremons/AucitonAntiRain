@@ -89,6 +89,60 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
         }
 
         /// <summary>
+        /// 移除小组,组员组号归为初始
+        /// </summary>
+        /// <param name="groupid">目标小组</param>
+        /// <param name="aid">小组所在群号</param>
+        /// <returns>状态值
+        /// 1：正常移除
+        /// 0：该小组并不在拍卖会内
+        /// -1：数据库出错
+        /// </returns>
+        public int RemoveGroup(int groupid, long aid)
+        {
+            int retCode;
+            using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
+            if (dbClient.Queryable<AuctionGroupInfo>().Where(i => i.Aid == aid && i.Gid == groupid).Any())
+            {
+                retCode = dbClient.Deleteable<AuctionGroupInfo>().Where(i => i.Aid == aid && i.Gid == groupid)
+                    .ExecuteCommandHasChange()
+                    ? 1
+                    : -1;
+            }
+            else
+            {
+                retCode = 0;
+            }
+
+            if (retCode != 1)
+            {
+                return retCode;
+            }
+
+            int retCode2 = 0;
+            List<AuctionMemberInfo> auctionMembers = ShowGroupMembers(aid, groupid);
+
+            auctionMembers.ForEach(async member =>
+            {
+                var data = new AuctionMemberInfo()
+                {
+                    Qid = member.Qid,
+                    Aid = aid,
+                    Name = member.Name,
+                    Gid = -1
+                };
+                retCode2 = await dbClient.Updateable(data)
+                    .Where(i => i.Qid == data.Qid && i.Aid == aid)
+                    .ExecuteCommandHasChangeAsync()
+                    ? 1
+                    : -1;
+            });
+
+
+            return retCode2;
+        }
+
+        /// <summary>
         /// 查询拍卖会所有成员
         /// </summary>
         /// <param name="groupid">QQ群号</param>
@@ -101,6 +155,22 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
                 .OrderBy(i => i.Gid)
                 .ToList();
         }
+
+        /// <summary>
+        /// 查询拍卖会某个小组的所有成员
+        /// </summary>
+        /// <param name="aid">QQ群号</param>
+        /// <param name="groupId">小组号</param>
+        /// <returns>按组号排序的成员列表</returns>
+        public List<AuctionMemberInfo> ShowGroupMembers(long aid,int groupId)
+        {
+            using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
+            return dbClient.Queryable<AuctionMemberInfo>()
+                .Where(i => i.Aid == aid && i.Gid == groupId)
+                .OrderBy(i => i.Gid)
+                .ToList();
+        }
+
 
         /// <summary>
         /// 添加一名成员
@@ -316,7 +386,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
         /// 1：该成员已存在，更新信息
         /// -1：数据库出错/API错误
         /// </returns>
-        public async Task<int> LeaderJoinToAuction(long qid, long aid, long groupid)
+        public async Task<int> LeaderJoinToGroup(long qid, long aid, long groupid)
         {
             try
             {
@@ -334,7 +404,8 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
                         Level = LevelType.Leader,
                         Qid = qid,
                         Aid = aid,
-                        Name = string.IsNullOrEmpty(member.Card) ? member.Nick : member.Card
+                        Name = string.IsNullOrEmpty(member.Card) ? member.Nick : member.Card,
+                        Gid = groupid
                     };
                     retCode = await dbClient.Updateable(data)
                                             .Where(i => i.Qid == qid && i.Aid == aid)

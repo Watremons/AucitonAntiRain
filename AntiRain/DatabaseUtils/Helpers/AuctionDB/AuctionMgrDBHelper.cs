@@ -29,7 +29,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
             AuctionTableName = $"{SugarTableUtils.GetTableName<AuctionBid>()}_{GuildEventArgs.SourceGroup.Id}";
         }
         #endregion
-        /*
+
         #region 公有方法
         /// <summary>
         /// 获取今天的出刀列表
@@ -47,7 +47,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
                 {
                     //查询所有人的出刀表
                     return dbClient.Queryable<GuildBattle>()
-                                   .AS(BattleTableName)
+                                   .AS(AuctionTableName)
                                    .Where(i => i.Time >= BotUtils.GetUpdateStamp())
                                    .OrderBy(i => i.Aid)
                                    .ToList();
@@ -56,7 +56,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
                 {
                     //查询单独成员的出刀表
                     return dbClient.Queryable<GuildBattle>()
-                                   .AS(BattleTableName)
+                                   .AS(AuctionTableName)
                                    .Where(i => i.Time >= BotUtils.GetUpdateStamp() && i.Uid == uid)
                                    .OrderBy(i => i.Aid)
                                    .ToList();
@@ -80,7 +80,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
             {
                 using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
                 return dbClient.Queryable<GuildBattle>()
-                               .AS(BattleTableName)
+                               .AS(AuctionTableName)
                                .Where(attack => attack.Time > BotUtils.GetUpdateStamp() &&
                                                 attack.Attack != AttackType.Compensate &&
                                                 attack.Attack != AttackType.CompensateKill)
@@ -136,14 +136,14 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
             try
             {
                 using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
-                if (SugarUtils.TableExists<GuildBattle>(dbClient, BattleTableName))
+                if (SugarUtils.TableExists<GuildBattle>(dbClient, AuctionTableName))
                 {
                     ConsoleLog.Error("会战管理数据库", "会战表已经存在，请检查是否未结束上次会战统计");
                     return 0;
                 }
                 else
                 {
-                    SugarUtils.CreateTable<GuildBattle>(dbClient, BattleTableName);
+                    SugarUtils.CreateTable<GuildBattle>(dbClient, AuctionTableName);
                     ConsoleLog.Info("会战管理数据库", "开始新的一期会战统计");
                     dbClient.Updateable(new GuildInfo { InBattle = true })
                                    .Where(guild => guild.Gid == GuildEventArgs.SourceGroup.Id)
@@ -192,10 +192,10 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
             try
             {
                 using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
-                if (SugarUtils.TableExists<GuildBattle>(dbClient, BattleTableName))
+                if (SugarUtils.TableExists<GuildBattle>(dbClient, AuctionTableName))
                 {
                     ConsoleLog.Warning("会战管理数据库", "结束一期会战统计删除旧表");
-                    SugarUtils.DeletTable<GuildBattle>(dbClient, BattleTableName);
+                    SugarUtils.DeletTable<GuildBattle>(dbClient, AuctionTableName);
                     return dbClient.Updateable(new GuildInfo { InBattle = false })
                                    .Where(guild => guild.Gid == GuildEventArgs.SourceGroup.Id)
                                    .UpdateColumns(i => new { i.InBattle })
@@ -234,7 +234,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
                 //获取最后一刀的类型出刀者UID
                 var lastAttack =
                     dbClient.Queryable<GuildBattle>()
-                            .AS(BattleTableName)
+                            .AS(AuctionTableName)
                             .Where(member => member.Uid == uid)
                             .OrderBy(attack => attack.Aid, OrderByType.Desc)
                             .Select(attack => new { lastType = attack.Attack, attack.Aid })
@@ -264,7 +264,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
             {
                 using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
                 return dbClient.Queryable<GuildBattle>()
-                               .AS(BattleTableName)
+                               .AS(AuctionTableName)
                                .InSingle(aid);
             }
             catch (Exception e)
@@ -288,7 +288,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
             {
                 using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
                 return dbClient.Deleteable<GuildBattle>()
-                               .AS(BattleTableName)
+                               .AS(AuctionTableName)
                                .Where(i => i.Aid == aid)
                                .ExecuteCommandHasChange();
             }
@@ -314,7 +314,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
                 using SqlSugarClient dbClient = SugarUtils.CreateSqlSugarClient(DBPath);
                 //出刀数
                 return dbClient.Queryable<GuildBattle>()
-                               .AS(BattleTableName)
+                               .AS(AuctionTableName)
                                //今天5点之后出刀的
                                .Where(i => i.Uid == uid && i.Time >= BotUtils.GetUpdateStamp() &&
                                            i.Attack != AttackType.Compensate && i.Attack != AttackType.CompensateKill)
@@ -355,7 +355,7 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
                     Attack = attackType
                 };
                 return dbClient.Insertable(insertData)
-                               .AS(BattleTableName)
+                               .AS(AuctionTableName)
                                .ExecuteReturnIdentity();
             }
             catch (Exception e)
@@ -748,6 +748,6 @@ namespace AntiRain.DatabaseUtils.Helpers.AuctionDB
             return nextPhase;
         }
         #endregion
-        */
+        
     }
 }

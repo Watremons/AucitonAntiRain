@@ -71,6 +71,12 @@ namespace AntiRain.ChatModule.AuctionModule
                     MemberList();
                     break;
 
+                //查看小组成员
+                case AuctionCommand.ListGroupMember:
+                    if (!await MemberCheck()) return;
+                    GroupMemberList();
+                    break;
+
                 //为拍卖会添加成员
                 case AuctionCommand.JoinAuction:
                     if (!await IsAdmin()) return;
@@ -87,6 +93,18 @@ namespace AntiRain.ChatModule.AuctionModule
                 case AuctionCommand.JoinGroup:
                     if (!await MemberCheck()) return;
                     GroupJoin();
+                    break;
+
+                //清空小组
+                case AuctionCommand.QuitAll:
+                    if (!await IsAdmin() || !await ZeroArgsCheck()) return;
+                    AllQuit();
+                    break;
+
+                //删除小组
+                case AuctionCommand.DeleteGroup:
+                    if (!await IsAdmin()) return;
+                    GroupDelete();
                     break;
 
                 default:
@@ -175,12 +193,112 @@ namespace AntiRain.ChatModule.AuctionModule
             if (memberList.Any())
             {
                 StringBuilder stringBuilder = new StringBuilder();
+                double maxLengthOfQQ = 0; //最长的QQ号长度，用于Pad对齐
+                double maxLengthOfNick = 0; //最长的昵称长度，用于Pad对齐
+                int maxLenghtOfQQint = 0; //最长的QQ号长度，用于Pad对齐
+                int maxLenghtOfNickint = 0; //最长的昵称长度，用于Pad对齐
+
+                memberList.ForEach(async member =>
+                {
+                    //await SourceGroup.GetGroupMemberInfo(member.Qid);
+                    (APIStatusType status, GroupMemberInfo groupMemberInfo) =
+                        await GBEventArgs.SoraApi.GetGroupMemberInfo(member.Aid, member.Qid);
+                    if (status != APIStatusType.OK)
+                    {
+                        ConsoleLog.Error("API Error", $"API ret error {status}");
+                        return;
+                    }
+
+                    #region 为QQ号，昵称长度检查更新
+                    if (BotUtils.GetQQStrLength(member.Qid.ToString()) > maxLengthOfQQ)
+                    {
+                        maxLengthOfQQ = BotUtils.GetQQStrLength(member.Qid.ToString());
+                    }
+
+                    if (BotUtils.GetQQStrLength(groupMemberInfo.Nick) > maxLengthOfNick)
+                    {
+                        maxLengthOfNick = BotUtils.GetQQStrLength(groupMemberInfo.Nick);
+                    }
+
+                    if (member.Qid.ToString().Length > maxLenghtOfQQint)
+                    {
+                        maxLenghtOfQQint = member.Qid.ToString().Length;
+                    }
+
+                    if (groupMemberInfo.Nick.Length > maxLenghtOfNickint)
+                    {
+                        maxLenghtOfNickint = groupMemberInfo.Nick.Length;
+                    }
+                    #endregion
+
+
+                });
+                maxLengthOfQQ += 2;
+                maxLengthOfNick += 2;
+                #region 为每个成员生成字符串
+                memberList.ForEach(async member =>
+                {
+                    (APIStatusType status, GroupMemberInfo aMember) = await GBEventArgs.SoraApi.GetGroupMemberInfo(member.Aid, member.Qid);
+                    if (status != APIStatusType.OK)
+                    {
+                        ConsoleLog.Error("API Error", $"API ret error {status}");
+                        return;
+                    }
+
+                    stringBuilder.Append("\n" + BotUtils.PadRightQQ(member.Qid.ToString(), maxLengthOfQQ) +
+                                         "  |   " + BotUtils.PadRightQQ(aMember.Nick, maxLengthOfNick) +
+                                         "  |   " + member.Gid.ToString());
+                });
+                #endregion
+
+                string listHeader = "\n\t" + AuctionGroupDB.GetAuctionInfo(SourceGroup.Id).AuctionName;
+                listHeader += "\n\t拍卖会成员列表";
+                listHeader += "\n".PadRight(maxLenghtOfNickint + maxLenghtOfQQint + 6, '=');
+                listHeader += "\n" + BotUtils.PadRightQQ("QQ号", maxLengthOfQQ)
+                                   + "|   " + BotUtils.PadRightQQ("昵称", maxLengthOfNick) 
+                                   + "|   小组号";
+                await SourceGroup.SendGroupMessage(CQCode.CQAt(GBEventArgs.Sender.Id), listHeader, stringBuilder.ToString());
+            }
+            else
+            {
+                await SourceGroup.SendGroupMessage(CQCode.CQAt(GBEventArgs.Sender.Id), " 拍卖会暂无成员噢~");
+            }
+        }
+
+        /// <summary>
+        /// 列出小组成员
+        /// </summary>
+        private async void GroupMemberList()
+        {
+            #region 检查参数
+            //检查参数数量
+            if (BotUtils.CheckForLength(CommandArgs, 1) != LenType.Legitimate)
+            {
+                ConsoleLog.Error("查看小组成员", "参数不合法");
+                await SourceGroup.SendGroupMessage("该命令为 [查看小组成员][小组号]", "请输入正确数量的参数");
+                return;
+            }
+            #endregion
+
+            if (!int.TryParse(CommandArgs[1], out int groupId))
+            {
+                await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id),
+                    "\r\n兄啊小组号啊别乱输入一些奇怪的东西啊");
+                return;
+            }
+            ConsoleLog.Debug("Group ID info parse", $"DEBUG\r\ngroupId = {groupId}");
+
+            List <AuctionMemberInfo> groupMemberList = AuctionGroupDB.ShowGroupMembers(SourceGroup.Id, groupId);
+
+            if (groupMemberList.Any())
+            {
+                StringBuilder stringBuilder = new StringBuilder();
                 double maxLenghtOfQQ = 0; //最长的QQ号长度，用于Pad对齐
                 double maxLenghtOfNick = 0; //最长的昵称长度，用于Pad对齐
                 int maxLenghtOfQQint = 0; //最长的QQ号长度，用于Pad对齐
                 int maxLenghtOfNickint = 0; //最长的昵称长度，用于Pad对齐
 
-                memberList.ForEach(async member =>
+                groupMemberList.ForEach(async member =>
                 {
                     //await SourceGroup.GetGroupMemberInfo(member.Qid);
                     (APIStatusType status, GroupMemberInfo groupMemberInfo) =
@@ -212,13 +330,11 @@ namespace AntiRain.ChatModule.AuctionModule
                         maxLenghtOfNickint = groupMemberInfo.Nick.Length;
                     }
                     #endregion
-
-
                 });
-                maxLenghtOfQQ+=2;
+                maxLenghtOfQQ += 2;
 
                 #region 为每个成员生成字符串
-                memberList.ForEach(async member =>
+                groupMemberList.ForEach(async member =>
                 {
                     (APIStatusType status, GroupMemberInfo aMember) = await GBEventArgs.SoraApi.GetGroupMemberInfo(member.Aid, member.Qid);
                     if (status != APIStatusType.OK)
@@ -227,21 +343,23 @@ namespace AntiRain.ChatModule.AuctionModule
                         return;
                     }
 
-                    stringBuilder.Append("\n" + BotUtils.PadRightQQ(member.Qid.ToString(), maxLenghtOfQQ) +
-                                         "  |   " +
-                                         aMember.Nick);
+                    _ = stringBuilder.Append("\n" + BotUtils.PadRightQQ(member.Qid.ToString(), maxLenghtOfQQ) +
+                                         "  |   " + BotUtils.PadRightQQ(aMember.Nick, maxLenghtOfNick) +
+                                         "  |   " + member.Gid.ToString());
                 });
                 #endregion
 
-                string listHeader = "\n\t" + AuctionGroupDB.GetAuctionInfo(SourceGroup.Id);
-                listHeader += "\n\t公会成员列表";
+                string listHeader = "\n\t" + AuctionGroupDB.GetAuctionInfo(SourceGroup.Id).AuctionName;
+                listHeader += $"\n\t拍卖会小组[{groupId}]成员列表";
                 listHeader += "\n".PadRight(maxLenghtOfNickint + maxLenghtOfQQint + 6, '=');
-                listHeader += "\n" + BotUtils.PadRightQQ("QQ号", maxLenghtOfQQ) + "  |   昵称";
+                listHeader += "\n" + BotUtils.PadRightQQ("QQ号", maxLenghtOfQQ)
+                                   + "|   " + BotUtils.PadRightQQ("昵称", maxLenghtOfNick)
+                                   + "|   小组号";
                 await SourceGroup.SendGroupMessage(CQCode.CQAt(GBEventArgs.Sender.Id), listHeader, stringBuilder.ToString());
             }
             else
             {
-                await SourceGroup.SendGroupMessage(CQCode.CQAt(GBEventArgs.Sender.Id), " 公会暂无成员噢~");
+                await SourceGroup.SendGroupMessage(CQCode.CQAt(GBEventArgs.Sender.Id), $" 拍卖会小组[{groupId}]暂无成员噢~");
             }
         }
 
@@ -330,7 +448,7 @@ namespace AntiRain.ChatModule.AuctionModule
             if (BotUtils.CheckForLength(CommandArgs, 2) != LenType.Legitimate)
             {
                 ConsoleLog.Error("创建小组","参数不合法");
-                await SourceGroup.SendGroupMessage("该命令为 [创建小组][小组名][@组长]","请输入正确数量的参数");
+                await SourceGroup.SendGroupMessage("该命令为 [创建小组][小组名][@组长]","\r\n请输入正确数量的参数");
                 return;
             }
             string name = CommandArgs[1];
@@ -366,15 +484,15 @@ namespace AntiRain.ChatModule.AuctionModule
                     break;
                 case 0:
                     ConsoleLog.Info("创建小组", "小组已存在，更名");
-                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id), $"小组更名为{name}，", "你已经成为小组组长");
+                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id), $"[{result}]小组更名为{name}");
                     break;
                 default:
                     ConsoleLog.Info("创建小组", "创建小组成功");
-                    await AuctionGroupDB.LeaderJoinToAuction(leaderId, SourceGroup.Id, result);
+                    await AuctionGroupDB.LeaderJoinToGroup(leaderId, SourceGroup.Id, result);
                     await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id),
-                                                       "\t\n" + $"创建小组{name}成功，",
-                                                       "\t\n"+ $"{leaderId}成为小组组长",
-                                                       "\t\n"+ $"小组组号为{result}");
+                                                       "\t\n" + $"创建小组 [{name}] 成功，",
+                                                       "\t\n"+ $"{leaderId} 成为小组组长",
+                                                       "\t\n"+ $"小组组号为: {result}");
                     break;
             }
         }
@@ -394,9 +512,7 @@ namespace AntiRain.ChatModule.AuctionModule
                 return;
             }
 
-            string groupStr = CommandArgs[1];
-            
-            if (int.TryParse(groupStr, out int groupId))
+            if (int.TryParse(CommandArgs[1], out int groupId))
             {
                 int result = await AuctionGroupDB.JoinToAuctionGroup(SenderQQ.Id, SourceGroup.Id, groupId);
                 switch (result)
@@ -412,9 +528,83 @@ namespace AntiRain.ChatModule.AuctionModule
                     case 1:
                         ConsoleLog.Info("加入小组", "加入小组成功");
                         await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id),
-                            "\t\n" + $"加入小组{groupId}成功，");
+                            "\t\n" + $"加入小组{groupId}成功");
                         break;
                 }
+            }
+            else
+            {
+                ConsoleLog.Error("加入小组失败", $"小组组号参数{CommandArgs[1]}不合法");
+                await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id), "加入小组失败", "你已经加入其他小组或未加入拍卖会");
+            }
+        }
+
+        /// <summary>
+        /// 清空成员
+        /// </summary>
+        private async void AllQuit()
+        {
+            int result = AuctionGroupDB.EmptyMember(SourceGroup.Id);
+
+            switch (result)
+            {
+                case -1:
+                    ConsoleLog.Error("清空成员失败", "数据库错误");
+                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id), "清空成员失败，", "请联系我的维护者");
+                    break;
+                case 0:
+                    ConsoleLog.Info("清空成员", "清空成员成功");
+                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id),
+                                                        "\t\n" + $"成功清空拍卖会{SourceGroup.Id}的所有成员，");
+                    break;
+                case 1:
+                    ConsoleLog.Info("清空成员失败", "拍卖会不存在");
+                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id), "清空成员失败", "当前群尚未登记为拍卖会");
+                    break;
+
+            }
+        }
+
+        /// <summary>
+        /// 删除小组
+        /// </summary>
+        private async void GroupDelete()
+        {
+            #region 检查参数
+            //检查参数数量
+            if (BotUtils.CheckForLength(CommandArgs, 1) != LenType.Legitimate)
+            {
+                ConsoleLog.Error("删除小组", "参数不合法");
+                await SourceGroup.SendGroupMessage("该命令为 [删除小组][小组号]", "请输入正确数量的参数");
+                return;
+            }
+            #endregion
+
+            if (!int.TryParse(CommandArgs[1],out int groupId))
+            {
+                await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id),
+                    "\r\n兄啊小组号啊别乱输入一些奇怪的东西啊");
+                return;
+            }
+            ConsoleLog.Debug("Group ID info parse", $"DEBUG\r\ngroupId = {groupId}");
+
+            int result = AuctionGroupDB.RemoveGroup(groupId, SourceGroup.Id);
+
+            switch (result)
+            {
+                case -1:
+                    ConsoleLog.Error("删除小组失败", "数据库错误");
+                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id), "删除小组失败，", "请联系我的维护者");
+                    break;
+                case 0:
+                    ConsoleLog.Error("删除小组失败", "拍卖会不存在");
+                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id), "删除小组失败", "当前群尚未登记为拍卖会");
+                    break;
+                case 1:
+                    ConsoleLog.Info("删除小组", "删除小组成功");
+                    await SourceGroup.SendGroupMessage(CQCode.CQAt(SenderQQ.Id),
+                        "\t\n" + $"成功清空小组[{groupId}]的所有成员，");
+                    break;
             }
         }
 

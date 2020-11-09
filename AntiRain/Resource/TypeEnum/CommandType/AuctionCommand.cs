@@ -20,16 +20,16 @@ namespace AntiRain.Resource.TypeEnum.CommandType
         CreateGroup = 1002,
 
         /// <summary>
-        /// 查看成员（各个小组/全部小组）
+        /// 查看成员
         /// </summary>
         [Description("查看成员")]
         ListMember = 1003,
 
         /// <summary>
-        /// 删除成员
+        /// 查看成员（各个小组/全部小组）
         /// </summary>
-        [Description("删除成员")]
-        DeleteMember = 1004,
+        [Description("查看小组成员")]
+        ListGroupMember = 1004,
 
         /// <summary>
         /// 清空拍卖会所有成员
@@ -46,12 +46,6 @@ namespace AntiRain.Resource.TypeEnum.CommandType
         /// <summary>
         /// 添加拍卖会藏品
         /// </summary>
-        [Description("添加藏品")]
-        AddLot = 1007,
-
-        /// <summary>
-        /// 添加拍卖会藏品
-        /// </summary>
         [Description("取消拍卖")]
         DeleteAuction = 1008,
 
@@ -64,7 +58,7 @@ namespace AntiRain.Resource.TypeEnum.CommandType
         /// <summary>
         /// 添加小组成员
         /// </summary>
-        [Description("添加小组成员")]
+        [Description("加入小组")]
         JoinGroup = 1010,
 
         /// <summary>
